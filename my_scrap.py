@@ -10,12 +10,14 @@ HOMEPAGE_URL = 'https://www.linkedin.com'
 LOGIN_URL = 'https://www.linkedin.com/checkpoint/lg/login-submit'
 
 def salvar_detalhes_vaga(detalhes_vaga : json):
+    id = detalhes_vaga['jobPostingId']
     nova_vaga = {
-        'Título': [detalhes_vaga['title']],
-        'Descrição': [detalhes_vaga['description']['text']],
-        'URL de aplicação': [detalhes_vaga['applyMethod']['companyApplyUrl']],
-        'Remota':[detalhes_vaga['workRemoteAllowed']],
-        'Data de busca': [date.today()]
+        'id': [id],
+        'titulo': [detalhes_vaga['title']],
+        'descricao': [detalhes_vaga['description']['text']],
+        'url_de_aplicacao': [detalhes_vaga['applyMethod']['companyApplyUrl']],
+        'vaga_remota':[detalhes_vaga['workRemoteAllowed']],
+        'data_de_busca': [date.today()]
     }
 
     excel_path = 'vagas.xlsx'
@@ -23,18 +25,21 @@ def salvar_detalhes_vaga(detalhes_vaga : json):
     try:
         df_existente = pd.read_excel(excel_path)
         df_novos = pd.DataFrame(nova_vaga)
-        df_final = pd.concat([df_existente, df_novos], ignore_index=True)
-
+        df_final = pd.concat([df_existente, df_novos], ignore_index=True).drop_duplicates(subset='id', keep='first')
+        
         with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
             df_final.to_excel(writer, index=False)
         
-        print(f'Dados foram adicionados ao arquivo {excel_path}')
+        if (len(df_final) > len(df_existente)):
+            print(f'Dados da vaga com o id {id} foram adicionados ao arquivo {excel_path}')
+        else:
+            print(f'Vaga com o id {id} já existe e não será adicionada novamente.')
 
     except FileNotFoundError:
         df_novos = pd.DataFrame(nova_vaga)
         df_novos.to_excel(excel_path, index=False, engine='xlsxwriter')
         
-        print(f'Criado novo arquivo {excel_path} com os dados')
+        print(f'Dados da vaga com o id {id} foram adicionados ao arquivo {excel_path}')
 
     except Exception as e:
         print(f'Ocorreu um erro: {str(e)}')
@@ -103,7 +108,7 @@ with open('results.txt', 'w') as f:
 
 for url in https_urls:
     # Send a GET request to the URL
-    response = client.get(list(https_urls)[0]) ##vai ser substituido por um for loop depois
+    response = client.get(url)
 
     # Parse the response content with BeautifulSoup
     soup = BeautifulSoup(response.content, "html.parser")
