@@ -10,9 +10,29 @@ HOMEPAGE_URL = 'https://www.linkedin.com'
 LOGIN_URL = 'https://www.linkedin.com/checkpoint/lg/login-submit'
 client = requests.Session()
 
+def get_nome_empresa(included_items):
+    for item in included_items:
+        try:
+            item_json = json.loads(item.text)
+
+            if 'name' in item_json:
+                return item_json['name']
+
+        except Exception:
+            pass        
+    return None
+
+
 def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga):
     titulo = detalhes_vaga['title']
+    empresa = get_nome_empresa(detalhes_vaga['included'])
+    if empresa != None:
+        id = str((titulo.encode() + empresa.encode()).hex())[:30]
+    else: 
+        id = str(titulo.encode().hex())[:30]
+
     nova_vaga = {
+        'id': [id],
         'titulo': [detalhes_vaga['title']],
         'descricao': [detalhes_vaga['description']['text']],
         'url_de_aplicacao': [url_vaga],
@@ -25,7 +45,7 @@ def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga):
     try:
         df_existente = pd.read_excel(excel_path)
         df_novos = pd.DataFrame(nova_vaga)
-        df_final = pd.concat([df_existente, df_novos], ignore_index=True).drop_duplicates(subset='url_de_aplicacao', keep='first')
+        df_final = pd.concat([df_existente, df_novos], ignore_index=True).drop_duplicates(subset='id', keep='first')
         
         with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
             df_final.to_excel(writer, index=False)
@@ -57,6 +77,7 @@ def extrair_detalhes_vaga(vaga_items):
         except Exception:
             pass        
     return None
+
 def login(email, senha):
     global client
     html = client.get(HOMEPAGE_URL).content
