@@ -17,7 +17,7 @@ def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga):
         'descricao': [detalhes_vaga['description']['text']],
         'url_de_aplicacao': [url_vaga],
         'vaga_remota':[detalhes_vaga['workRemoteAllowed']],
-        'data_de_busca': [date.today()]
+        'data_de_busca': [str(date.today())]
     }
 
     excel_path = 'vagas.xlsx'
@@ -30,18 +30,19 @@ def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga):
         with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
             df_final.to_excel(writer, index=False)
 
-        with open('vagas.json', 'w') as f:
-            json.dump(df_final.to_json(orient='records', lines=True), f, indent=2)
+        with open('vagas.json', 'w', encoding='UTF-8') as f:
+            json.dump(df_final.to_dict(orient= 'records'), f, ensure_ascii=False, indent=2)
 
 
-        print(f'Dados da vaga com o titulo {titulo} foram adicionados ao arquivo {excel_path}')
+        print(f'Dados da vaga com o titulo {titulo} foram adicionados ao arquivo vagas.json')
 
 
     except FileNotFoundError:
         df_novos = pd.DataFrame(nova_vaga)
         df_novos.to_excel(excel_path, index=False, engine='xlsxwriter')
-        
-        print(f'Dados da vaga com o titulo {titulo} foram adicionados ao arquivo {excel_path}')
+        with open('vagas.json', 'w', encoding='UTF-8') as f:
+            json.dump(df_novos.to_dict(orient= 'records'), f, ensure_ascii=False, indent=2)
+        print(f'Dados da vaga com o titulo {titulo} foram adicionados ao arquivo vagas.json')
 
     except Exception as e:
         print(f'Ocorreu um erro: {str(e)}')
@@ -91,7 +92,7 @@ def extract_urls(data, key):
 def gerar_urls(numero_paginas, url_busca):
     global client
     https_urls = list()
-    for i in range(0,numero_paginas):
+    for i in range(101,103):
         content = client.get(
             url_busca + '&refres=true&start=' + str(25 * i)).content
         soup = BeautifulSoup(content, "html.parser")
@@ -122,8 +123,8 @@ def buscar_e_salvar_vagas(numero_paginas, url_busca):
 def main():
     keyword = input("Digite o a sua busca vaga como buscaria no LinkedIn: ")
     numero_paginas = int(input("Digite o numero de paginas que deseja buscar: "))
-    email = input("Digite o seu email: ")
-    senha = input("Digite o sua senha: ")
+    email = 'artemiza2264@uorak.com'
+    senha = 'f@S%c>M_8M>n=h5'
     url_busca = 'https://www.linkedin.com/search/results/all/?keywords=' + keyword + '&origin=GLOBAL_SEARCH_HEADER&sid=JTP'
     login(email, senha)
     buscar_e_salvar_vagas(numero_paginas, url_busca)
