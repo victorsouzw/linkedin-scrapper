@@ -9,13 +9,12 @@ client = requests.Session()
 HOMEPAGE_URL = 'https://www.linkedin.com'
 LOGIN_URL = 'https://www.linkedin.com/checkpoint/lg/login-submit'
 
-def salvar_detalhes_vaga(detalhes_vaga : json):
-    id = detalhes_vaga['jobPostingId']
+def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga):
+    titulo = detalhes_vaga['title']
     nova_vaga = {
-        'id': [id],
         'titulo': [detalhes_vaga['title']],
         'descricao': [detalhes_vaga['description']['text']],
-        'url_de_aplicacao': [detalhes_vaga['applyMethod']['companyApplyUrl']],
+        'url_de_aplicacao': [url_vaga],
         'vaga_remota':[detalhes_vaga['workRemoteAllowed']],
         'data_de_busca': [date.today()]
     }
@@ -25,21 +24,20 @@ def salvar_detalhes_vaga(detalhes_vaga : json):
     try:
         df_existente = pd.read_excel(excel_path)
         df_novos = pd.DataFrame(nova_vaga)
-        df_final = pd.concat([df_existente, df_novos], ignore_index=True).drop_duplicates(subset='id', keep='first')
+        df_final = pd.concat([df_existente, df_novos], ignore_index=True)
         
         with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
             df_final.to_excel(writer, index=False)
-        
-        if (len(df_final) > len(df_existente)):
-            print(f'Dados da vaga com o id {id} foram adicionados ao arquivo {excel_path}')
-        else:
-            print(f'Vaga com o id {id} já existe e não será adicionada novamente.')
+
+
+        print(f'Dados da vaga com o titulo {titulo} foram adicionados ao arquivo {excel_path}')
+
 
     except FileNotFoundError:
         df_novos = pd.DataFrame(nova_vaga)
         df_novos.to_excel(excel_path, index=False, engine='xlsxwriter')
         
-        print(f'Dados da vaga com o id {id} foram adicionados ao arquivo {excel_path}')
+        print(f'Dados da vaga com o titulo {titulo} foram adicionados ao arquivo {excel_path}')
 
     except Exception as e:
         print(f'Ocorreu um erro: {str(e)}')
@@ -74,9 +72,12 @@ if result_login_soup.find(id='captchaInternalPath') is not None:
     raise Exception("O LinkedIn considerou o login suspeito. Solicitando um confirmação por código que foi enviado ao respectivo email. A resposta ao pin challenge não foi implementada.")
 
 # TODO deixar melhor a forma de adicionar a query
+keyword = input("Digite o a sua busca vaga como buscaria no LinkedIn: ")
+numero_paginas = int(input("Digite o numero de paginas que deseja buscar: "))
 url_vagas_inicio = 'https://www.linkedin.com/search/results/all/?'
-url_vagas_keywords = 'keywords=project manager "pleno"'
+url_vagas_keywords = 'keywords='+keyword
 url_vagas_final = '&origin=GLOBAL_SEARCH_HEADER&sid=JTP'
+
 
 
 def extract_urls(data, key):
@@ -92,7 +93,7 @@ def extract_urls(data, key):
 
 https_urls = list()
 
-for i in range(0,4):
+for i in range(0,numero_paginas):
     content = client.get(
         url_vagas_inicio + url_vagas_keywords + url_vagas_final + '&refres=true&start=' + str(25 * i)).content
     soup = BeautifulSoup(content, "html.parser")
@@ -111,23 +112,7 @@ for url in https_urls:
     # Parse the response content with BeautifulSoup
     soup = BeautifulSoup(response.content, "html.parser")
 
-    # Convert the BeautifulSoup object to a pretty string
-    # pretty_html = soup.prettify()
-
-    # Save the pretty HTML into a file named 'scrap-vaga.html'
-    # with open('scrap-vaga.html', 'w', encoding='utf-8') as f:
-    #    f.write(pretty_html)
-
     vaga_items = soup.find_all('code')
     detalhes_vaga = extrair_detalhes_vaga(vaga_items)
     if detalhes_vaga != None:
-        salvar_detalhes_vaga(detalhes_vaga)    
-
-
-## Se o resultado do scrap-vaga tem o id "apply-button--default" quer dizer que tem aplicação simplificada
-## Uma coluna de resultado "link para aplicação" e colocar link  ou "aplicação simplificada"
-## o link para vaga está disponível na tag "applyUrl" daquelas vagas que não são simplificadas
-
-## mais interessante pegar no primeiro scrap de busca todos links pra ir pra pagina detalhada da vaga
-## na pagina das vagas pega as informações detalhadas e pimba, salva no csv
-## da pra tentar adicionar data de postagem e data de expiração da vaga
+        salvar_detalhes_vaga(detalhes_vaga, url)
