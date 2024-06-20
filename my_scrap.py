@@ -30,6 +30,9 @@ def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga):
         with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
             df_final.to_excel(writer, index=False)
 
+        with open('vagas.json', 'w') as f:
+            json.dump(df_final.to_json(orient='records', lines=True), f, indent=2)
+
 
         print(f'Dados da vaga com o titulo {titulo} foram adicionados ao arquivo {excel_path}')
 
