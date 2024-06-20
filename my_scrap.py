@@ -1,11 +1,52 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import pandas as pd
+from datetime import date
 
 client = requests.Session()
 
 HOMEPAGE_URL = 'https://www.linkedin.com'
 LOGIN_URL = 'https://www.linkedin.com/checkpoint/lg/login-submit'
+
+def salvar_detalhes_vaga(detalhes_vaga : json):
+    nova_vaga = {
+        'Título': [detalhes_vaga['title']],
+        'Descrição': [detalhes_vaga['description']['text']],
+        'URL de aplicação': [detalhes_vaga['applyMethod']['companyApplyUrl']],
+        'Remota':[detalhes_vaga['workRemoteAllowed']],
+        'Data de busca': [date.today()]
+    }
+
+    excel_path = 'vagas.xlsx'
+
+    try:
+        df_existente = pd.read_excel(excel_path)
+        df_novos = pd.DataFrame(nova_vaga)
+        df_final = pd.concat([df_existente, df_novos], ignore_index=True)
+
+        with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
+            df_final.to_excel(writer, index=False)
+        
+        print(f'Dados foram adicionados ao arquivo {excel_path}')
+
+    except FileNotFoundError:
+        df_novos = pd.DataFrame(nova_vaga)
+        df_novos.to_excel(excel_path, index=False, engine='xlsxwriter')
+        
+        print(f'Criado novo arquivo {excel_path} com os dados')
+
+    except Exception as e:
+        print(f'Ocorreu um erro: {str(e)}')
+
+def extrair_detalhes_vaga(vaga_items):
+    for item in vaga_items:
+        item_json = json.loads(item.text)
+
+        if 'data' in item_json and 'applyMethod' in item_json['data']:
+            return item_json['data']
+        
+    return None
 
 html = client.get(HOMEPAGE_URL).content
 soup = BeautifulSoup(html, "html.parser")
@@ -13,7 +54,7 @@ csrf = soup.find('input', {"name":"loginCsrfParam"})['value']
 
 file = open('senha.txt', 'r')
 login_information = {
-    'session_key':'lizzette8293@uorak.com', ###ALTERAR EMAIL
+    'session_key':'rixasik327@luravell.com', ###ALTERAR EMAIL
     'session_password': file.read(),
     'loginCsrfParam': csrf,
 }
@@ -21,7 +62,7 @@ file.close()
 
 result_login = client.post(LOGIN_URL, data=login_information)
 result_login_soup = BeautifulSoup(result_login.content, "html.parser")
-if result_login_soup.find(id='email-pin-challenge') is not None:
+if result_login_soup.find(id='captchaInternalPath') is not None:
     raise Exception("O LinkedIn considerou o login suspeito. Solicitando um confirmação por código que foi enviado ao respectivo email. A resposta ao pin challenge não foi implementada.")
 
 # TODO deixar melhor a forma de adicionar a query
@@ -60,19 +101,27 @@ https_urls = set(extract_urls(data, 'url'))
 with open('results.txt', 'w') as f:
     f.write(str(https_urls)) ## (jeito mais facil eu acho) pode ser usado para verificar as vagas novas, abre a file antes de popular ela na função de extrair s urls e se ja for existente ele nao vai adicionar porque é um set
 
+for url in https_urls:
+    # Send a GET request to the URL
+    response = client.get(list(https_urls)[0]) ##vai ser substituido por um for loop depois
 
-# Send a GET request to the URL
-response = client.get(list(https_urls)[0]) ##vai ser substituido por um for loop depois
+    # Parse the response content with BeautifulSoup
+    soup = BeautifulSoup(response.content, "html.parser")
 
-# Parse the response content with BeautifulSoup
-soup = BeautifulSoup(response.content, "html.parser")
+    # Convert the BeautifulSoup object to a pretty string
+    # pretty_html = soup.prettify()
 
-# Convert the BeautifulSoup object to a pretty string
-pretty_html = soup.prettify()
+    # Save the pretty HTML into a file named 'scrap-vaga.html'
+    # with open('scrap-vaga.html', 'w', encoding='utf-8') as f:
+    #    f.write(pretty_html)
 
-# Save the pretty HTML into a file named 'scrap-vaga.html'
-with open('scrap-vaga.html', 'w') as f:
-    f.write(pretty_html)
+    vaga_items = soup.find_all('code')
+    detalhes_vaga = extrair_detalhes_vaga(vaga_items)
+    if detalhes_vaga != None:
+        salvar_detalhes_vaga(detalhes_vaga)
+
+    
+
 
 ## Se o resultado do scrap-vaga tem o id "apply-button--default" quer dizer que tem aplicação simplificada
 ## Uma coluna de resultado "link para aplicação" e colocar link  ou "aplicação simplificada"
