@@ -11,6 +11,9 @@ LOGIN_URL = 'https://www.linkedin.com/checkpoint/lg/login-submit'
 client = requests.Session()
 
 def get_nome_empresa(included_items):
+    if included_items == None:
+        return None
+    
     for item in included_items:
         try:
             item_json = json.loads(item.text)
@@ -23,9 +26,9 @@ def get_nome_empresa(included_items):
     return None
 
 
-def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga):
+def salvar_detalhes_vaga(detalhes_vaga : json, url_vaga, included : list):
     titulo = detalhes_vaga['title']
-    empresa = get_nome_empresa(detalhes_vaga['included'])
+    empresa = get_nome_empresa(included)
     if empresa != None:
         id = str((titulo.encode() + empresa.encode()).hex())[:30]
     else: 
@@ -74,6 +77,18 @@ def extrair_detalhes_vaga(vaga_items):
 
             if 'data' in item_json and 'applyMethod' in item_json['data']:
                 return item_json['data']
+
+        except Exception:
+            pass        
+    return None
+
+def extrair_included(vaga_items):
+    for item in vaga_items:
+        try:
+            item_json = json.loads(item.text)
+
+            if 'included' in item_json:
+                return item_json['included']
 
         except Exception:
             pass        
@@ -138,8 +153,9 @@ def buscar_e_salvar_vagas(numero_paginas, url_busca):
 
         vaga_items = soup.find_all('code')
         detalhes_vaga = extrair_detalhes_vaga(vaga_items)
+        included = extrair_included(vaga_items)
         if detalhes_vaga != None:
-            salvar_detalhes_vaga(detalhes_vaga, url)
+            salvar_detalhes_vaga(detalhes_vaga, url, included)
 
 def main():
     keyword = input("Digite o a sua busca vaga como buscaria no LinkedIn: ")
