@@ -46,11 +46,14 @@ def salvar_detalhes_vaga(detalhes_vaga : json):
 
 def extrair_detalhes_vaga(vaga_items):
     for item in vaga_items:
-        item_json = json.loads(item.text)
+        try:
+            item_json = json.loads(item.text)
 
-        if 'data' in item_json and 'applyMethod' in item_json['data']:
-            return item_json['data']
-        
+            if 'data' in item_json and 'applyMethod' in item_json['data']:
+                return item_json['data']
+
+        except Exception:
+            pass        
     return None
 
 html = client.get(HOMEPAGE_URL).content
@@ -59,7 +62,7 @@ csrf = soup.find('input', {"name":"loginCsrfParam"})['value']
 
 file = open('senha.txt', 'r')
 login_information = {
-    'session_key':'rixasik327@luravell.com', ###ALTERAR EMAIL
+    'session_key':'starr6438@uorak.com', ###ALTERAR EMAIL
     'session_password': file.read(),
     'loginCsrfParam': csrf,
 }
@@ -75,20 +78,6 @@ url_vagas_inicio = 'https://www.linkedin.com/search/results/all/?'
 url_vagas_keywords = 'keywords=project manager "pleno"'
 url_vagas_final = '&origin=GLOBAL_SEARCH_HEADER&sid=JTP'
 
-content = client.get(url_vagas_inicio+url_vagas_keywords+url_vagas_final).content
-
-soup = BeautifulSoup(content, "html.parser")
-
-# Find all <code> tags with an id that starts with "bpr-guid"
-bpr_guid_tags = soup.select('code[id^="bpr-guid"]')
-
-
-# payload que queremos estão em <code id="bpr-guid-xxxxx" style="display: none"> // xxxx pq varia por request, usar o bpr-guid apenas
-# vou alterar o codigo para salvar apenas o resultado util, para lidar com o caso de senha errado ou requisição incompleta, talvez seja necessário olhar novamente
-# todo o html para entender o que está acontecendo. caso não existir o "bpr-guid" na requisição incorreta, conseguiremos verificar com isso
-
-data = json.loads(str(bpr_guid_tags[-1].text).strip())
-#pegar o último elemento da lista, pois são retornados varias tags <code bpr-guid...>
 
 def extract_urls(data, key):
     if isinstance(data, dict):
@@ -101,10 +90,19 @@ def extract_urls(data, key):
         for item in data:
             yield from extract_urls(item, key)
 
-# Aqui teremos extraido as URLs para a página de detalhes das vagas
-https_urls = set(extract_urls(data, 'url'))
-with open('results.txt', 'w') as f:
-    f.write(str(https_urls)) ## (jeito mais facil eu acho) pode ser usado para verificar as vagas novas, abre a file antes de popular ela na função de extrair s urls e se ja for existente ele nao vai adicionar porque é um set
+https_urls = list()
+
+for i in range(0,4):
+    content = client.get(
+        url_vagas_inicio + url_vagas_keywords + url_vagas_final + '&refres=true&start=' + str(25 * i)).content
+    soup = BeautifulSoup(content, "html.parser")
+    bpr_guid_tags = soup.select('code[id^="bpr-guid"]')
+    data = json.loads(str(bpr_guid_tags[-1].text).strip())
+
+    https_urls_dentro = (list(extract_urls(data, 'url')))
+    for url in https_urls_dentro:
+        if url not in https_urls:
+            https_urls.append(url)
 
 for url in https_urls:
     # Send a GET request to the URL
@@ -123,9 +121,7 @@ for url in https_urls:
     vaga_items = soup.find_all('code')
     detalhes_vaga = extrair_detalhes_vaga(vaga_items)
     if detalhes_vaga != None:
-        salvar_detalhes_vaga(detalhes_vaga)
-
-    
+        salvar_detalhes_vaga(detalhes_vaga)    
 
 
 ## Se o resultado do scrap-vaga tem o id "apply-button--default" quer dizer que tem aplicação simplificada
