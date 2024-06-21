@@ -115,7 +115,7 @@ def login(email, senha):
 def extract_urls(data, key):
     if isinstance(data, dict):
         for k, v in data.items():
-            if k == key and isinstance(v, str) and v.startswith('https') and 'NAVIGATION_JOB_CARD' in v:
+            if k == key and isinstance(v, str) and v.startswith('https://www.linkedin.com/jobs'):
                 yield v
             elif isinstance(v, (dict, list)):
                 yield from extract_urls(v, key)
@@ -128,14 +128,15 @@ def extract_urls(data, key):
 def gerar_urls(numero_paginas, url_busca):
     global client
     https_urls = list()
-    for i in range(101,103):
-        content = client.get(
-            url_busca + '&refres=true&start=' + str(25 * i)).content
+    for i in range(110, 210):
+        page = str(25 * i)
+        url_get = url_busca + '&refresh=true&start=' + page
+        content = client.get(url_get).content
         soup = BeautifulSoup(content, "html.parser")
         bpr_guid_tags = soup.select('code[id^="bpr-guid"]')
         data = json.loads(str(bpr_guid_tags[-1].text).strip())
 
-        https_urls_dentro = (list(extract_urls(data, 'url')))
+        https_urls_dentro = (list(extract_urls(data, 'actionTarget')))
         for url in https_urls_dentro:
             if url not in https_urls:
                 https_urls.append(url)
@@ -160,9 +161,9 @@ def buscar_e_salvar_vagas(numero_paginas, url_busca):
 def main():
     keyword = input("Digite o a sua busca vaga como buscaria no LinkedIn: ")
     numero_paginas = int(input("Digite o numero de paginas que deseja buscar: "))
-    email = 'artemiza2264@uorak.com'
-    senha = 'f@S%c>M_8M>n=h5'
-    url_busca = 'https://www.linkedin.com/search/results/all/?keywords=' + keyword + '&origin=GLOBAL_SEARCH_HEADER&sid=JTP'
+    email = 'rosaida3722@uorak.com'
+    senha = 'u%L4hMC_+kkCgx"'
+    url_busca = 'https://www.linkedin.com/jobs/search/?keywords=' + keyword
     login(email, senha)
     buscar_e_salvar_vagas(numero_paginas, url_busca)
 
