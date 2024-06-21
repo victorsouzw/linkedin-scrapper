@@ -161,8 +161,8 @@ def buscar_e_salvar_vagas(numero_paginas, url_busca):
 def main():
     keyword = input("Digite o a sua busca vaga como buscaria no LinkedIn: ")
     numero_paginas = int(input("Digite o numero de paginas que deseja buscar: "))
-    email = 'rosaida3722@uorak.com'
-    senha = 'u%L4hMC_+kkCgx"'
+    email = input("email: ")
+    senha = input("senha: ")
     url_busca = 'https://www.linkedin.com/jobs/search/?keywords=' + keyword
     login(email, senha)
     buscar_e_salvar_vagas(numero_paginas, url_busca)
